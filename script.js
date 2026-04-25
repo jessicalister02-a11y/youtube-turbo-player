@@ -1,61 +1,65 @@
 let player;
-const speedRange = document.getElementById('speedRange');
-const speedValue = document.getElementById('speedValue');
+let apiReady = false;
 
-// 1. This function is called automatically by the YouTube API script in the HTML
+// 1. Load the YouTube API Script dynamically to ensure it bypasses sandbox issues
+var tag = document.createElement('script');
+tag.src = "https://www.youtube.com/iframe_api";
+var firstScriptTag = document.getElementsByTagName('script')[0];
+firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
+
+// 2. This runs when the API is ready
 function onYouTubeIframeAPIReady() {
+  console.log("YouTube API Ready");
   player = new YT.Player('player', {
     height: '390',
     width: '640',
-    videoId: 'dQw4w9WgXcQ', // Initial placeholder video
+    videoId: 'dQw4w9WgXcQ', 
     playerVars: {
-      'playsinline': 1
+      'origin': window.location.origin, // Helps with CodePen security
+      'enablejsapi': 1
     },
     events: {
-      'onReady': onPlayerReady
+      'onReady': () => { 
+        apiReady = true; 
+        console.log("Player is Ready");
+      }
     }
   });
 }
 
-// 2. Setup listeners once the player is ready
-function onPlayerReady(event) {
-  speedRange.addEventListener('input', (e) => {
-    setSpeed(e.target.value);
-  });
-}
-
-// 3. The core function to change speed
-function setSpeed(speed) {
-  speed = parseFloat(speed);
-  
-  if (player && player.setPlaybackRate) {
-    player.setPlaybackRate(speed);
-    
-    // Update the UI
-    speedRange.value = speed;
-    speedValue.innerText = speed.toFixed(2);
-    
-    console.log("Speed set to: " + speed);
-  }
-}
-
-// 4. Load a new video from the URL input
+// 3. The loading function with a "Force" check
 function loadVideo() {
   const url = document.getElementById('videoUrl').value;
   const videoId = extractVideoID(url);
   
-  if (videoId) {
+  if (!videoId) {
+    alert("Please enter a valid YouTube URL");
+    return;
+  }
+
+  // If the API player object exists, use it
+  if (player && typeof player.loadVideoById === 'function') {
     player.loadVideoById(videoId);
-    // Brief timeout to ensure the new video is ready before applying speed
-    setTimeout(() => {
-      setSpeed(speedRange.value);
-    }, 500);
+    // Apply speed after a tiny delay to let the video load
+    setTimeout(() => setSpeed(document.getElementById('speedRange').value), 1000);
   } else {
-    alert("Please enter a valid YouTube URL (e.g., https://www.youtube.com/watch?v=...)");
+    // FALLBACK: If the API is failing, we rebuild the player
+    console.log("API not responding, attempting manual rebuild...");
+    onYouTubeIframeAPIReady(); 
   }
 }
 
-// 5. Helper to turn a full URL into a 11-character ID
+function setSpeed(speed) {
+  speed = parseFloat(speed);
+  if (player && player.setPlaybackRate) {
+    player.setPlaybackRate(speed);
+    document.getElementById('speedRange').value = speed;
+    document.getElementById('speedValue').innerText = speed.toFixed(2);
+  } else {
+    console.error("Player not ready to change speed yet.");
+  }
+}
+
 function extractVideoID(url) {
   const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|\&v=)([^#\&\?]*).*/;
   const match = url.match(regExp);
