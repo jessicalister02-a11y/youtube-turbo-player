@@ -4,50 +4,42 @@ function onYouTubeIframeAPIReady() {
   player = new YT.Player('player', {
     height: '390',
     width: '640',
-    videoId: 'dQw4w9WgXcQ', // Default video
-    playerVars: {
-      'rel': 0,
-      'modestbranding': 1
-    },
+    videoId: 'dQw4w9WgXcQ',
     events: {
-      'onReady': onPlayerReady
+      'onReady': () => console.log("Player Ready")
     }
-  });
-}
-
-function onPlayerReady(event) {
-  const speedRange = document.getElementById('speedRange');
-  speedRange.addEventListener('input', (e) => {
-    setSpeed(e.target.value);
   });
 }
 
 function setSpeed(speed) {
   speed = parseFloat(speed);
+  
+  // 1. Try the official way first (works up to 2x)
   if (player && player.setPlaybackRate) {
     player.setPlaybackRate(speed);
-    
-    // Update the UI
-    document.getElementById('speedRange').value = speed;
-    document.getElementById('speedValue').innerText = speed.toFixed(2);
-    
-    console.log("Speed requested: " + speed);
   }
+
+  // 2. The "Turbo" Hack: Target the video element directly
+  // This works if the browser allows cross-origin access (often blocked on live sites)
+  try {
+    const videoElement = document.querySelector('iframe').contentWindow.document.querySelector('video');
+    if (videoElement) {
+      videoElement.playbackRate = speed;
+      console.log("Forced video element to:", speed);
+    }
+  } catch (e) {
+    console.warn("Browser security blocked the 4x hack. Stick to 2x or use a Browser Extension.");
+  }
+
+  // Update UI regardless
+  document.getElementById('speedValue').innerText = speed.toFixed(2);
 }
 
 function loadVideo() {
   const url = document.getElementById('videoUrl').value;
   const videoId = extractVideoID(url);
-  
   if (videoId) {
     player.loadVideoById(videoId);
-    // Give the video a second to load before forcing the speed
-    setTimeout(() => {
-      const currentSpeed = document.getElementById('speedRange').value;
-      setSpeed(currentSpeed);
-    }, 1000);
-  } else {
-    alert("Please enter a valid YouTube URL");
   }
 }
 
