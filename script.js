@@ -1,62 +1,53 @@
 let player;
-let apiReady = false;
 
-// 1. Load the YouTube API Script dynamically to ensure it bypasses sandbox issues
-var tag = document.createElement('script');
-tag.src = "https://www.youtube.com/iframe_api";
-var firstScriptTag = document.getElementsByTagName('script')[0];
-firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-
-// 2. This runs when the API is ready
 function onYouTubeIframeAPIReady() {
-  console.log("YouTube API Ready");
   player = new YT.Player('player', {
     height: '390',
     width: '640',
-    videoId: 'dQw4w9WgXcQ', 
+    videoId: 'dQw4w9WgXcQ', // Default video
     playerVars: {
-      'origin': window.location.origin, // Helps with CodePen security
-      'enablejsapi': 1
+      'rel': 0,
+      'modestbranding': 1
     },
     events: {
-      'onReady': () => { 
-        apiReady = true; 
-        console.log("Player is Ready");
-      }
+      'onReady': onPlayerReady
     }
   });
 }
 
-// 3. The loading function with a "Force" check
-function loadVideo() {
-  const url = document.getElementById('videoUrl').value;
-  const videoId = extractVideoID(url);
-  
-  if (!videoId) {
-    alert("Please enter a valid YouTube URL");
-    return;
-  }
-
-  // If the API player object exists, use it
-  if (player && typeof player.loadVideoById === 'function') {
-    player.loadVideoById(videoId);
-    // Apply speed after a tiny delay to let the video load
-    setTimeout(() => setSpeed(document.getElementById('speedRange').value), 1000);
-  } else {
-    // FALLBACK: If the API is failing, we rebuild the player
-    console.log("API not responding, attempting manual rebuild...");
-    onYouTubeIframeAPIReady(); 
-  }
+function onPlayerReady(event) {
+  const speedRange = document.getElementById('speedRange');
+  speedRange.addEventListener('input', (e) => {
+    setSpeed(e.target.value);
+  });
 }
 
 function setSpeed(speed) {
   speed = parseFloat(speed);
   if (player && player.setPlaybackRate) {
     player.setPlaybackRate(speed);
+    
+    // Update the UI
     document.getElementById('speedRange').value = speed;
     document.getElementById('speedValue').innerText = speed.toFixed(2);
+    
+    console.log("Speed requested: " + speed);
+  }
+}
+
+function loadVideo() {
+  const url = document.getElementById('videoUrl').value;
+  const videoId = extractVideoID(url);
+  
+  if (videoId) {
+    player.loadVideoById(videoId);
+    // Give the video a second to load before forcing the speed
+    setTimeout(() => {
+      const currentSpeed = document.getElementById('speedRange').value;
+      setSpeed(currentSpeed);
+    }, 1000);
   } else {
-    console.error("Player not ready to change speed yet.");
+    alert("Please enter a valid YouTube URL");
   }
 }
 
